@@ -515,6 +515,52 @@
         left: 16px;
       }
 
+      /* ELIMINATION UI */
+      .elim-info {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 77, 109, 0.1);
+        border: 1px solid rgba(255, 77, 109, 0.2);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 9px;
+        color: var(--red);
+        -webkit-app-region: no-drag;
+      }
+      .reset-btn {
+        background: var(--red);
+        color: white;
+        border: none;
+        padding: 2px 5px;
+        border-radius: 3px;
+        cursor: pointer;
+        margin-left: 4px;
+        font-weight: bold;
+      }
+      .word-pill {
+        position: relative;
+        padding-right: 24px !important;
+      }
+      .word-elim-btn {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 14px;
+        transition: 0.2s;
+      }
+      .word-elim-btn:hover {
+        color: var(--red);
+      }
+
       /* DIVIDER */
       .divider {
         height: 1px;
@@ -555,7 +601,12 @@
       <div class="hdr">
         <div class="hdr-left">
           <div class="title">SAMBUNG KATA</div>
-          <div class="subtitle">KBBI • 71,011 KATA</div>
+          <div class="elim-info" id="elimInfo">
+            <span id="elimCount">0</span> DIBUANG
+            <button class="reset-btn" onclick="resetElimination()">
+              RESET
+            </button>
+          </div>
         </div>
         <div class="hdr-right">
           <label class="toggle-container">
@@ -731,7 +782,8 @@
             w.startsWith(suffix) &&
             w.length >= minLen &&
             w.length <= maxLen &&
-            !exclude.has(w)
+            !exclude.has(w) &&
+            !eliminatedWords.has(w)
           )
             res.push(w);
         }
@@ -753,6 +805,7 @@
       let activeSuffix = "";
       let filterMode = "ALL";
       let chain = []; // [{word, suffix}]
+      let eliminatedWords = new Set();
 
       // ── INPUT HANDLER ──────────────────────────────────────────
       function onInput() {
@@ -877,6 +930,9 @@
       function renderFiltered() {
         const q = document.getElementById("fSearch").value.toLowerCase();
         let list = allWords;
+        // Filter eliminated words again just in case allWords isn't refreshed
+        list = list.filter((w) => !eliminatedWords.has(w));
+
         if (filterMode === "5") list = list.filter((w) => w.length <= 5);
         if (filterMode === "7") list = list.filter((w) => w.length <= 7);
         if (filterMode === "8+") list = list.filter((w) => w.length >= 8);
@@ -899,9 +955,37 @@
       <div class="wc-len">${w.length}</div>
       <span class="wc-sfx">${sfxPart.toUpperCase()}</span><span class="wc-rest">${restPart.toUpperCase()}</span>
       <div class="wc-hint">→ <span>${nextSfx}</span></div>
+      <div class="word-elim-btn" title="Eliminasi" onclick="event.stopPropagation(); eliminateWord('${w}')">×</div>
     </div>`;
           })
           .join("");
+      }
+
+      function eliminateWord(word) {
+        if (!word) return;
+        eliminatedWords.add(word.toLowerCase().trim());
+        updateElimUI();
+        renderFiltered();
+      }
+
+      function resetElimination() {
+        eliminatedWords.clear();
+        updateElimUI();
+        // Trigger a fresh search to bring words back
+        if (activeSuffix) {
+          fetchWords(activeSuffix);
+        }
+      }
+
+      function updateElimUI() {
+        const info = document.getElementById("elimInfo");
+        const countLabel = document.getElementById("elimCount");
+        if (eliminatedWords.size > 0) {
+          info.style.display = "flex";
+          countLabel.textContent = eliminatedWords.size;
+        } else {
+          info.style.display = "none";
+        }
       }
 
       // ── PICK WORD ──────────────────────────────────────────────
@@ -913,6 +997,7 @@
         updateViz(word, activeSuffix);
         fetchWords(activeSuffix);
         typeRequest(word);
+        eliminateWord(word); // Auto eliminate
       }
 
       // ── CHAIN ──────────────────────────────────────────────────
@@ -1019,6 +1104,7 @@
           window.webkit.messageHandlers.typeInRoblox
         ) {
           window.webkit.messageHandlers.typeInRoblox.postMessage(textToType);
+          eliminateWord(word); // Auto eliminate on type
         } else {
           console.log("Typing (Simulated):", textToType);
           isProcessing = false;

@@ -143,36 +143,51 @@ class OverlayPanel: NSPanel, WKScriptMessageHandler {
         }
     }
 
+    private func keyCode(for char: Character) -> CGKeyCode? {
+        let charStr = String(char).lowercased()
+        let mapping: [String: CGKeyCode] = [
+            "a": 0x00, "b": 0x0B, "c": 0x08, "d": 0x02, "e": 0x0E, "f": 0x03, "g": 0x05, "h": 0x04,
+            "i": 0x22, "j": 0x26, "k": 0x28, "l": 0x25, "m": 0x2E, "n": 0x2D, "o": 0x1F, "p": 0x23,
+            "q": 0x0C, "r": 0x0F, "s": 0x01, "t": 0x11, "u": 0x20, "v": 0x09, "w": 0x0D, "x": 0x07,
+            "y": 0x10, "z": 0x06, "0": 0x1D, "1": 0x12, "2": 0x13, "3": 0x14, "4": 0x15, "5": 0x17,
+            "6": 0x16, "7": 0x1A, "8": 0x1C, "9": 0x19, " ": 0x31
+        ]
+        return mapping[charStr]
+    }
+
     func simulateKey(char: Character, pid: pid_t) {
-        // Use nil source for PID targeted events
-        let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false)
+        // Use HID event source to mimic real hardware input
+        let source = CGEventSource(stateID: .hidSystemState)
         
+        let vk = keyCode(for: char) ?? 0 // Fallback to 0 if unknown
+        
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vk, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vk, keyDown: false)
+        
+        // Also set Unicode for backup/non-HID listeners
         let utf16Chars = Array(String(char).utf16)
         keyDown?.keyboardSetUnicodeString(stringLength: utf16Chars.count, unicodeString: utf16Chars)
         keyUp?.keyboardSetUnicodeString(stringLength: utf16Chars.count, unicodeString: utf16Chars)
         
-        // Clear modifiers to prevent ghosting
         keyDown?.flags = []
         keyUp?.flags = []
         
-        print("   [DOWN] '\(char)'")
+        print("   [DOWN] '\(char)' (VK: \(vk))")
         keyDown?.postToPid(pid)
         
-        // Direct hold (80ms)
         Thread.sleep(forTimeInterval: 0.08)
         
-        print("   [UP]   '\(char)'")
+        print("   [UP]   '\(char)' (VK: \(vk))")
         keyUp?.postToPid(pid)
         
-        // Post-release recovery (60ms)
         Thread.sleep(forTimeInterval: 0.06)
     }
 
     func simulateEnter(pid: pid_t) {
+        let source = CGEventSource(stateID: .hidSystemState)
         let kEnter: CGKeyCode = 0x24
-        let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: kEnter, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: kEnter, keyDown: false)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: kEnter, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: kEnter, keyDown: false)
         
         keyDown?.flags = []
         keyUp?.flags = []
