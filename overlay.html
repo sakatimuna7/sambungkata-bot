@@ -898,18 +898,36 @@
           renderFiltered();
 
           if (isEnter && allWords.length > 0) {
-            // Smart select: find first word with continuation
-            let picked = allWords[0];
-            for (const w of allWords) {
+            const currentInput = document
+              .getElementById("inp")
+              .value.toLowerCase()
+              .trim();
+            // Filter out word that is exactly the same as input
+            let filteredSuggest = allWords.filter(
+              (w) => w.toLowerCase() !== currentInput,
+            );
+
+            if (filteredSuggest.length === 0) {
+              console.log(
+                "[SMART] No alternative words found after skipping exact match.",
+              );
+              return;
+            }
+
+            // Smart select: find first word with continuation from the filtered list
+            let picked = filteredSuggest[0];
+            for (const w of filteredSuggest) {
               if (hasContinuation(w)) {
                 picked = w;
-                console.log(`[SMART] Selected "${w}" (has continuation)`);
+                console.log(
+                  `[SMART] Selected "${w}" (has continuation, skipped exact match "${currentInput}")`,
+                );
                 break;
               }
             }
-            if (picked === allWords[0] && !hasContinuation(picked)) {
+            if (picked === filteredSuggest[0] && !hasContinuation(picked)) {
               console.log(
-                `[SMART] Warning: No word with continuation found. Falling back to "${picked}"`,
+                `[SMART] Warning: No word with continuation found in alternatives. Falling back to "${picked}"`,
               );
             }
             typeRequest(picked);
@@ -1119,7 +1137,21 @@
       // Add a receiver for "typing done" to reset isProcessing
       window.typingDone = function () {
         isProcessing = false;
+        // Auto-focus back to input
+        const inp = document.getElementById("inp");
+        if (inp) {
+          inp.focus();
+          inp.select(); // Select existing text if any for easy replacement
+        }
       };
+
+      // Auto-focus when window becomes active
+      window.addEventListener("focus", () => {
+        const inp = document.getElementById("inp");
+        if (inp) {
+          inp.focus();
+        }
+      });
     </script>
   </body>
 </html>
