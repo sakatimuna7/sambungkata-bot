@@ -869,18 +869,24 @@
       }
 
       function calcSkak(word) {
+        let totalContinuations = 0;
         let bestScore = 999999;
         let bestSfx = "";
+
         // Consider suffixes of length 1, 2, and 3
         for (let n = 1; n <= Math.min(3, word.length); n++) {
           const sfx = word.slice(-n);
           const c = countContinuations(sfx);
+          totalContinuations += c;
+
           if (c < bestScore) {
             bestScore = c;
             bestSfx = sfx;
           }
         }
-        return { score: bestScore, sfx: bestSfx };
+
+        // The score is the total number of continuations across all possible opponent moves (1, 2, or 3 char suffixes)
+        return { score: totalContinuations, sfx: bestSfx };
       }
 
       // ── STATE ──────────────────────────────────────────────────
@@ -1054,8 +1060,13 @@
 
         const skakOn = document.getElementById("skakToggle").checked;
         let scored = list.map((w) => {
-          const res = calcSkak(w);
-          return { word: w, score: res.score, bestSfx: res.sfx };
+          if (skakOn) {
+            const res = calcSkak(w);
+            return { word: w, score: res.score, bestSfx: res.sfx };
+          } else {
+            // Default sorting or neutral score if SKAK is off
+            return { word: w, score: 0, bestSfx: w.slice(-2) };
+          }
         });
 
         if (skakOn) {
