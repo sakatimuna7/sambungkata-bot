@@ -355,6 +355,36 @@
       .wcard:hover::after {
         transform: scaleX(1);
       }
+      .sk-prefix {
+        color: var(--green);
+        font-weight: 700;
+      }
+      .wcard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        font-size: 11px;
+        letter-spacing: 1px;
+        color: rgba(240, 240, 240, 0.8);
+      }
+      .word-elim-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: none;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 10px;
+        display: none;
+      }
+      .wcard:hover .word-elim-btn {
+        display: block;
+      }
+      .word-elim-btn:hover {
+        color: var(--red);
+      }
       .wc-sfx {
         color: var(--green);
         font-size: 11px;
@@ -505,14 +535,19 @@
         left: 2px;
         transition: 0.3s;
       }
-      #autoToggle {
+      #autoToggle,
+      #skakToggle {
         display: none;
       }
-      #autoToggle:checked + .toggle-switch {
+      #autoToggle:checked + .toggle-switch,
+      #skakToggle:checked + .toggle-switch {
         background: var(--green);
+        border-color: var(--green);
       }
-      #autoToggle:checked + .toggle-switch::after {
-        left: 16px;
+      #autoToggle:checked + .toggle-switch::after,
+      #skakToggle:checked + .toggle-switch::after {
+        left: 17px;
+        background: #000;
       }
 
       /* ELIMINATION UI */
@@ -559,6 +594,22 @@
       }
       .word-elim-btn:hover {
         color: var(--red);
+      }
+
+      .skak-badge {
+        font-size: 8px;
+        padding: 2px 4px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        color: var(--muted2);
+        margin-left: 6px;
+      }
+      .skak-best {
+        background: rgba(185, 255, 102, 0.1);
+        border-color: var(--green);
+        color: var(--green);
+        font-weight: 700;
       }
 
       /* DIVIDER */
@@ -612,6 +663,11 @@
           <label class="toggle-container">
             <span class="toggle-label">AUTO</span>
             <input type="checkbox" id="autoToggle" onchange="saveAutoState()" />
+            <span class="toggle-switch"></span>
+          </label>
+          <label class="toggle-container">
+            <span class="toggle-label">SKAK</span>
+            <input type="checkbox" id="skakToggle" onchange="saveAutoState()" />
             <span class="toggle-switch"></span>
           </label>
           <div class="hotkey">⌘⇧K</div>
@@ -711,7 +767,6 @@
         </div>
       </div>
     </div>
-
     <script>
       // ── KBBI DATA ──────────────────────────────────────────────
       const _raw = {
@@ -798,6 +853,34 @@
           if (suggest(sfx, 1).length > 0) return true;
         }
         return false;
+      }
+
+      function countContinuations(sfx) {
+        sfx = sfx.toLowerCase().trim();
+        if (!sfx) return 0;
+        const list = getList(sfx[0]);
+        let count = 0;
+        for (const w of list) {
+          if (w.startsWith(sfx)) {
+            if (!eliminatedWords.has(w)) count++;
+          }
+        }
+        return count;
+      }
+
+      function calcSkak(word) {
+        let bestScore = 999999;
+        let bestSfx = "";
+        // Consider suffixes of length 1, 2, and 3
+        for (let n = 1; n <= Math.min(3, word.length); n++) {
+          const sfx = word.slice(-n);
+          const c = countContinuations(sfx);
+          if (c < bestScore) {
+            bestScore = c;
+            bestSfx = sfx;
+          }
+        }
+        return { score: bestScore, sfx: bestSfx };
       }
 
       // ── STATE ──────────────────────────────────────────────────
@@ -902,33 +985,46 @@
               .getElementById("inp")
               .value.toLowerCase()
               .trim();
-            // Filter out word that is exactly the same as input
-            let filteredSuggest = allWords.filter(
-              (w) => w.toLowerCase() !== currentInput,
-            );
+            const skakOn = document.getElementById("skakToggle").checked;
 
-            if (filteredSuggest.length === 0) {
-              console.log(
-                "[SMART] No alternative words found after skipping exact match.",
-              );
-              return;
+            if (skakOn) {
+              // If SKAK is ON, we already sorted allWords by score in renderFiltered
+              // However, renderFiltered is called asynchronously or might have different filters
+              // To be safe, let's re-sort or just pick the first one from the already rendered/scored list
+              let scored = allWords
+                .filter(
+                  (w) =>
+                    !eliminatedWords.has(w) && w.toLowerCase() !== currentInput,
+                )
+                .map((w) => {
+                  const res = calcSkak(w);
+                  return { word: w, score: res.score };
+                })
+                .sort((a, b) => a.score - b.score);
+
+              if (scored.length > 0) {
+                console.log(
+                  `[SKAK-AUTO] Selecting best SKAK word: "${scored[0].word}" (score: ${scored[0].score})`,
+                );
+                typeRequest(scored[0].word);
+                return;
+              }
             }
 
-            // Smart select: find first word with continuation from the filtered list
+            // Fallback to original smart select if SKAK is off
+            let filteredSuggest = allWords.filter(
+              (w) =>
+                w.toLowerCase() !== currentInput && !eliminatedWords.has(w),
+            );
+
+            if (filteredSuggest.length === 0) return;
+
             let picked = filteredSuggest[0];
             for (const w of filteredSuggest) {
               if (hasContinuation(w)) {
                 picked = w;
-                console.log(
-                  `[SMART] Selected "${w}" (has continuation, skipped exact match "${currentInput}")`,
-                );
                 break;
               }
-            }
-            if (picked === filteredSuggest[0] && !hasContinuation(picked)) {
-              console.log(
-                `[SMART] Warning: No word with continuation found in alternatives. Falling back to "${picked}"`,
-              );
             }
             typeRequest(picked);
           }
@@ -956,25 +1052,46 @@
         if (filterMode === "8+") list = list.filter((w) => w.length >= 8);
         if (q) list = list.filter((w) => w.includes(q));
 
-        document.getElementById("resBadge").textContent = list.length + " KATA";
+        const skakOn = document.getElementById("skakToggle").checked;
+        let scored = list.map((w) => {
+          const res = calcSkak(w);
+          return { word: w, score: res.score, bestSfx: res.sfx };
+        });
+
+        if (skakOn) {
+          scored.sort((a, b) => a.score - b.score);
+        }
+
+        document.getElementById("resBadge").textContent =
+          scored.length + " KATA";
         const grid = document.getElementById("wordsGrid");
 
-        if (!list.length) {
+        if (!scored.length) {
           grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Tidak ada kata ditemukan</div>`;
           return;
         }
 
-        grid.innerHTML = list
-          .map((w) => {
+        grid.innerHTML = scored
+          .map((item) => {
+            const w = item.word;
+            const score = item.score;
+            const bestSfx = item.bestSfx;
+            const isSkakBest = score === 0;
+            const badgeClass = isSkakBest
+              ? "skak-badge skak-best"
+              : "skak-badge";
+
             const sfxPart = w.slice(0, activeSuffix.length);
             const restPart = w.slice(activeSuffix.length);
-            const nextSfx = w.slice(-Math.min(2, w.length)).toUpperCase();
-            return `<div class="wcard" onclick="pickWord('${w}')">
-      <div class="wc-len">${w.length}</div>
-      <span class="wc-sfx">${sfxPart.toUpperCase()}</span><span class="wc-rest">${restPart.toUpperCase()}</span>
-      <div class="wc-hint">→ <span>${nextSfx}</span></div>
-      <div class="word-elim-btn" title="Eliminasi" onclick="event.stopPropagation(); eliminateWord('${w}')">×</div>
-    </div>`;
+            return `
+            <div class="wcard" onclick="pickWord('${w}')">
+              <div class="wcard-header">
+                <span class="sk-prefix">${sfxPart.toUpperCase()}</span>${restPart.toUpperCase()}
+                <span class="${badgeClass}">[${bestSfx.toUpperCase()}] SKAK: ${score}</span>
+              </div>
+              <button class="word-elim-btn" onclick="event.stopPropagation(); eliminateWord('${w}')">✕</button>
+            </div>
+          `;
           })
           .join("");
       }
@@ -1078,12 +1195,17 @@
       let isProcessing = false;
 
       function saveAutoState() {
-        const val = document.getElementById("autoToggle").checked;
-        localStorage.setItem("autoAnswer", val);
+        const auto = document.getElementById("autoToggle").checked;
+        const skak = document.getElementById("skakToggle").checked;
+        localStorage.setItem("autoAnswer", auto);
+        localStorage.setItem("skakMode", skak);
+        if (allWords.length > 0) renderFiltered();
       }
       function loadAutoState() {
-        const val = localStorage.getItem("autoAnswer") === "true";
-        document.getElementById("autoToggle").checked = val;
+        const auto = localStorage.getItem("autoAnswer") === "true";
+        const skak = localStorage.getItem("skakMode") === "true";
+        document.getElementById("autoToggle").checked = auto;
+        document.getElementById("skakToggle").checked = skak;
       }
 
       window.addEventListener("load", loadAutoState);

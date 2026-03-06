@@ -48,7 +48,7 @@ echo "✅ Compiled!"
 # Copy files
 echo "📄 Copying files..."
 cp Info.plist "${APP_DIR}/Contents/Info.plist"
-cp overlay.html "${EXEC_DIR}/overlay.html"
+cp overlay.html "${RES_DIR}/overlay.html"
 
 # Sign ad-hoc (tanpa Apple Developer account)
 echo "✍️  Signing (ad-hoc)..."

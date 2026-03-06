@@ -45,15 +45,30 @@ class OverlayPanel: NSPanel, WKScriptMessageHandler {
         webView.autoresizingMask = [.width, .height]
         self.contentView = webView
 
-        let htmlPath = Bundle.main.path(forResource: "overlay", ofType: "html")
-            ?? (Bundle.main.bundlePath + "/Contents/MacOS/overlay.html")
+        // Load HTML from app bundle
+        var htmlUrl: URL?
+        
+        // 1. Try standard Resources folder
+        if let bundleUrl = Bundle.main.url(forResource: "overlay", withExtension: "html") {
+            htmlUrl = bundleUrl
+            print("📁 Found overlay.html in Resources: \(bundleUrl.path)")
+        } 
+        // 2. Try same directory as executable (fallback)
+        else {
+            let exeDir = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
+            let fallback = exeDir.appendingPathComponent("overlay.html")
+            if FileManager.default.fileExists(atPath: fallback.path) {
+                htmlUrl = fallback
+                print("📁 Found overlay.html in MacOS folder: \(fallback.path)")
+            }
+        }
 
-        if FileManager.default.fileExists(atPath: htmlPath) {
-            let url = URL(fileURLWithPath: htmlPath)
+        if let url = htmlUrl {
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         } else {
-            let exeDir = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
-            webView.loadFileURL(exeDir.appendingPathComponent("overlay.html"), allowingReadAccessTo: exeDir)
+            print("❌ Error: overlay.html not found anywhere!")
+            // Try to load a simple error message
+            webView.loadHTMLString("<html><body><h1>Error: overlay.html not found</h1></body></html>", baseURL: nil)
         }
     }
 
