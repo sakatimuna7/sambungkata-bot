@@ -9,9 +9,9 @@
     <key>CFBundleIdentifier</key>
     <string>com.dev.sambungkata</string>
     <key>CFBundleVersion</key>
-    <string>1.0</string>
+    <string>1.1</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.1</string>
     <key>CFBundleExecutable</key>
     <string>SambungKata</string>
     <key>CFBundlePackageType</key>
@@ -24,5 +24,7 @@
     <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>SambungKata perlu mengirim keyboard input ke aplikasi lain (Roblox/TextEdit) untuk fitur auto-type.</string>
 </dict>
 </plist>

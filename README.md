@@ -59,6 +59,12 @@ Bot otomatis untuk game Sambung Kata (Roblox/TextEdit) dengan antarmuka overlay 
    - **Klik Kata**: Mengetik kata yang lu pilih secara spesifik.
 5. Aktifkan toggle **AUTO** jika ingin bot langsung ngetik pas lu tekan Enter.
 
+If it still doesn't work: Please run the app directly from the terminal to see the debug logs:
+
+```bash
+open /Users/newustechnology/Newus/setupProject/SambungKataV2/SambungKata.app/Contents/MacOS/SambungKata
+```
+
 ---
 
 _Dibuat dengan ❤️ untuk para pro player Sambung Kata._
