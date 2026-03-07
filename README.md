@@ -65,6 +65,15 @@ If it still doesn't work: Please run the app directly from the terminal to see t
 open /Users/newustechnology/Newus/setupProject/SambungKataV2/SambungKata.app/Contents/MacOS/SambungKata
 ```
 
+1. Akan muncul jendela transparan berukuran layar penuh dengan 3 kotak yang bisa digeser (drag) dan diubah ukurannya (tarik pojok kanan bawah):
+   - Garis Hijau (L1: GILIRAN): Letakkan kotak ini di atas teks yang menandakan harinya/giliran Anda mengetik. Jika ini terdeteksi aktif, aplikasi baru akan membaca kata yang harus disambung.
+   - Garis Merah (L2: SALAH): Letakkan kotak ini di spot di mana gamenya memberitahu jika jawaban salah (misalnya icon "X" merah atau tulisan "salah"). Jika ini terdeteksi, aplikasi akan otomatis menghapus kata yang salah tersebut dari pilihan dan memikirkan kata lain.
+   - Garis Biru (L3: KATA): Letakkan kotak ini persis di atas target kata dari lawan yang harus Anda sambung.
+
+2. Klik tombol Selesai Setup di bawah layar untuk menutup Area Selector. Jendela overlay utama akan muncul kembali.
+3. Centang toggle OCR (warna biru) di overlay utama untuk Mulai Autodeteksi.
+4. Jika kamu mengaktifkan AUTO dan OCR secara bersamaan, bot ini otomatis akan bermain penuh berdasarkan tangkapan layar!
+
 ---
 
 _Dibuat dengan ❤️ untuk para pro player Sambung Kata._

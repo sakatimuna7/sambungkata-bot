@@ -660,12 +660,13 @@
           </div>
         </div>
         <div class="hdr-right">
-          <label class="toggle-container">
+          <!-- REMOVED: SCREEN DETECTION CONTROLS (Moved to body) -->
+          <label class="toggle-container" title="Auto Answer">
             <span class="toggle-label">AUTO</span>
             <input type="checkbox" id="autoToggle" onchange="saveAutoState()" />
             <span class="toggle-switch"></span>
           </label>
-          <label class="toggle-container">
+          <label class="toggle-container" title="SKAK Mode (Safe Words)">
             <span class="toggle-label">SKAK</span>
             <input type="checkbox" id="skakToggle" onchange="saveAutoState()" />
             <span class="toggle-switch"></span>
@@ -694,7 +695,33 @@
               oninput="onInput()"
               onkeydown="if (event.key === 'Enter') doSearch(true);"
             />
-            <button class="btn-go" onclick="doSearch(false)">▶</button>
+          </div>
+
+          <!-- SCREEN DETECTION CONTROLS -->
+          <div
+            style="
+              display: flex;
+              gap: 10px;
+              margin-top: 10px;
+              align-items: center;
+            "
+          >
+            <button
+              class="btn-go"
+              onclick="
+                window.webkit.messageHandlers.toggleSetup.postMessage('')
+              "
+              style="font-size: 11px; padding: 4px 8px; flex: 1"
+            >
+              ⛶ SETUP AREA
+            </button>
+            <label class="toggle-container" title="Auto Detect OCR">
+              <span class="toggle-label" style="color: var(--blue)"
+                >OCR BOT</span
+              >
+              <input type="checkbox" id="ocrToggle" onchange="toggleOCR()" />
+              <span class="toggle-switch"></span>
+            </label>
           </div>
         </div>
 
@@ -1275,6 +1302,75 @@
         if (inp) {
           inp.focus();
           inp.select(); // Select existing text if any for easy replacement
+        }
+      };
+
+      // ── SCREEN DETECTION (OCR) HANDLERS ──────────────────────
+
+      let _lastOcrWord = "";
+
+      function toggleOCR() {
+        const isActive = document.getElementById("ocrToggle").checked;
+        if (isActive) {
+          console.log("Starting Auto-Detect...");
+          if (
+            window.webkit &&
+            window.webkit.messageHandlers &&
+            window.webkit.messageHandlers.startAutoDetect
+          ) {
+            window.webkit.messageHandlers.startAutoDetect.postMessage("");
+          }
+        } else {
+          console.log("Stopping Auto-Detect...");
+          if (
+            window.webkit &&
+            window.webkit.messageHandlers &&
+            window.webkit.messageHandlers.stopAutoDetect
+          ) {
+            window.webkit.messageHandlers.stopAutoDetect.postMessage("");
+          }
+          _lastOcrWord = ""; // Reset memory when stopped
+        }
+      }
+
+      // Called by Swift when Layer 3 detects a valid word
+      window.handleOCRTargetWord = function (word) {
+        if (!word || word.length < 1) return;
+
+        // Prevent infinite loop of searching the exact same word repeatedly
+        if (word === _lastOcrWord) return;
+        _lastOcrWord = word;
+
+        console.log("[OCR] Received target word:", word);
+        const inp = document.getElementById("inp");
+        if (inp) {
+          inp.value = word;
+          // Trigger the search as if the user pressed Enter
+          doSearch(true);
+        }
+      };
+
+      // Called by Swift when Layer 2 detects a "wrong answer" indicator
+      window.handleIncorrectAnswer = function () {
+        console.log(
+          "[OCR] Detected incorrect answer! Eliminating previous word...",
+        );
+
+        // Find what we just typed (if any)
+        if (chain.length > 0) {
+          const lastWordObj = chain[chain.length - 1];
+          if (lastWordObj && lastWordObj.word) {
+            eliminateWord(lastWordObj.word);
+          }
+
+          // Pop the chain so we don't get confused
+          chain.pop();
+
+          // Re-trigger search for the suffix that was supposed to be answered
+          if (activeSuffix) {
+            _lastOcrWord = ""; // Clear OCR memory so it can re-search if needed
+            fetchWords(activeSuffix, true); // Search and auto-type the NEXT best word
+          }
         }
       };
 
