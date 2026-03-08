@@ -656,28 +656,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self = self else { return }
             
             if count > 0 {
-                logToJS("L1 Box Detected (Turns Active)", type: "success")
-                
-                // 2. Perform OCR on both L1 and L3 (since they are same content per user)
-                // This gives us double the chance to catch the target word.
-                OCRManager.shared.recognizeText(in: l3Img, fast: true) { l3Raw in
-                    let l3Clean = l3Raw.lowercased().components(separatedBy: CharacterSet.letters.inverted).joined()
+                // ADDITIONAL VALIDATION: L1 MUST also contain OCR text to avoid noise
+                OCRManager.shared.recognizeText(in: l1Img, fast: true) { l1Raw in
+                    let l1Clean = l1Raw.lowercased().components(separatedBy: CharacterSet.letters.inverted).joined()
                     
-                    OCRManager.shared.recognizeText(in: l1Img, fast: true) { l1Raw in
-                        let l1Clean = l1Raw.lowercased().components(separatedBy: CharacterSet.letters.inverted).joined()
+                    if !l1Clean.isEmpty {
+                        logToJS("L1 Active (Box + Text: \(l1Clean))", type: "success")
                         
-                        // Pick the better result (longest string of letters)
-                        let bestResult = l3Clean.count >= l1Clean.count ? l3Clean : l1Clean
-                        
-                        if !bestResult.isEmpty {
-                            logToJS("Target Word: \(bestResult) (L3: \(l3Clean), L1: \(l1Clean))", type: "info")
-                            DispatchQueue.main.async {
-                                self.panel.webView.evaluateJavaScript("window.handleOCRTargetWord && window.handleOCRTargetWord('\(bestResult)');", completionHandler: nil)
+                        // 2. Perform OCR on L3
+                        // Use .accurate mode for L3 as requested for better precision
+                        OCRManager.shared.recognizeText(in: l3Img, fast: false) { l3Raw in
+                            let l3Filtered = l3Raw.replacingOccurrences(of: "|", with: "")
+                                                  .replacingOccurrences(of: "l", with: "")
+                                                  .trimmingCharacters(in: .whitespacesAndNewlines)
+                            
+                            let l3Clean = l3Filtered.lowercased().components(separatedBy: CharacterSet.letters.inverted).joined()
+                            
+                            // Pick the better result (L3 is primary, L1 is fallback)
+                            let bestResult = l3Clean.count >= l1Clean.count ? l3Clean : l1Clean
+                            
+                            if !bestResult.isEmpty {
+                                logToJS("Target Word: \(bestResult)", type: "info")
+                                DispatchQueue.main.async {
+                                    self.panel.webView.evaluateJavaScript("window.handleOCRTargetWord && window.handleOCRTargetWord('\(bestResult)');", completionHandler: nil)
+                                }
                             }
-                        } else {
-                            // If both empty, maybe log for debug
-                             print("L1/L3 OCR Empty despite box detection")
                         }
+                    } else {
+                        // print("L1 Rectangle detected but no text found - skipping noise")
                     }
                 }
             }
@@ -694,7 +700,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-
+    
     func toggleSetupWindow() {
         if setupPanel.isVisible {
             print("📉 Hiding setup panel")

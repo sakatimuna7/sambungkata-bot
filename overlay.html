@@ -1300,8 +1300,8 @@
         // Auto-focus back to input
         const inp = document.getElementById("inp");
         if (inp) {
+          inp.value = ""; // Force clear after typing done
           inp.focus();
-          inp.select(); // Select existing text if any for easy replacement
         }
       };
 
@@ -1337,12 +1337,18 @@
       window.handleOCRTargetWord = function (word) {
         if (!word || word.length < 1) return;
 
+        // SKIP if user is currently typing something manually (more than 1 char)
+        const inp = document.getElementById("inp");
+        if (inp && inp.value.trim().length > 1 && !isProcessing) {
+          console.log("[OCR] Manual input detected, skipping OCR trigger.");
+          return;
+        }
+
         // Prevent infinite loop of searching the exact same word repeatedly
         if (word === _lastOcrWord) return;
         _lastOcrWord = word;
 
         console.log("[OCR] Received target word:", word);
-        const inp = document.getElementById("inp");
         if (inp) {
           inp.value = word;
           // Trigger the search as if the user pressed Enter
@@ -1356,19 +1362,23 @@
           "[OCR] Detected incorrect answer! Eliminating previous word...",
         );
 
+        // Reset memory so we can re-detect the same syllable immediately
+        _lastOcrWord = "";
+
         // Find what we just typed (if any)
         if (chain.length > 0) {
           const lastWordObj = chain[chain.length - 1];
           if (lastWordObj && lastWordObj.word) {
+            console.log("[OCR] Eliminating:", lastWordObj.word);
             eliminateWord(lastWordObj.word);
           }
 
           // Pop the chain so we don't get confused
           chain.pop();
+          renderChain();
 
           // Re-trigger search for the suffix that was supposed to be answered
           if (activeSuffix) {
-            _lastOcrWord = ""; // Clear OCR memory so it can re-search if needed
             fetchWords(activeSuffix, true); // Search and auto-type the NEXT best word
           }
         }

@@ -62,7 +62,7 @@ Bot otomatis untuk game Sambung Kata (Roblox/TextEdit) dengan antarmuka overlay 
 If it still doesn't work: Please run the app directly from the terminal to see the debug logs:
 
 ```bash
-open /Users/newustechnology/Newus/setupProject/SambungKataV2/SambungKata.app/Contents/MacOS/SambungKata
+open SambungKata.app/Contents/MacOS/SambungKata
 ```
 
 1. Akan muncul jendela transparan berukuran layar penuh dengan 3 kotak yang bisa digeser (drag) dan diubah ukurannya (tarik pojok kanan bawah):
